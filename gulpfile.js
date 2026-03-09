@@ -17,9 +17,6 @@ var gulp                    = require("gulp"),
     concat                  = require("gulp-concat"),
     uglify                  = require("gulp-uglify"),
 
-    // Image plugin
-    imagemin                = require("gulp-imagemin"),
-
     // General plugins
     plumber                 = require("gulp-plumber"),
     size                    = require("gulp-size"),
@@ -106,10 +103,6 @@ function js() {
 // Image task
 function images() {
     return gulp.src("src/img/**/*.+(png|jpeg|jpg|gif|svg)")
-        // Prevent gulp.watch from crashing
-        .pipe(plumber(onError))
-        // Minify the images
-        .pipe(imagemin())
         // Where to store the finalized images
         .pipe(gulp.dest("dist/img"));
 }
