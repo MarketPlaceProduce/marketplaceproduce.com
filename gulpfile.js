@@ -8,7 +8,7 @@ var gulp                    = require("gulp"),
     htmlmin                 = require("gulp-htmlmin"),
 
     // CSS plugins
-    sass                    = require("gulp-sass"),
+    sass                    = require("gulp-sass")(require("sass")),
     autoprefixer            = require("gulp-autoprefixer"),
     cssmin                  = require("gulp-clean-css"),
     rename                  = require("gulp-rename"),
@@ -21,34 +21,36 @@ var gulp                    = require("gulp"),
     imagemin                = require("gulp-imagemin"),
 
     // General plugins
-    gutil                   = require("gulp-util"),
     plumber                 = require("gulp-plumber"),
     size                    = require("gulp-size"),
-    watch                   = require("gulp-watch"),
-    browserSync             = require("browser-sync"),
-    reload                  = browserSync.reload;
+    browserSync             = require("browser-sync").create();
 
 // Tasks
 // -------------------------------------------------------------------
 // Start server
-gulp.task("browser-sync", function() {
-    browserSync({
+function browserSyncServe(done) {
+    browserSync.init({
         server: {
             baseDir: "dist"
         }
     });
-});
+    done();
+}
+
+function reload(done) {
+    browserSync.reload();
+    done();
+}
 
 // Notify on error with a beep
 var onError = function(error) {
-    console.log(gutil.colors.red(error.message));
+    console.error(error.message);
     // https://github.com/floatdrop/gulp-plumber/issues/17
     this.emit("end");
-    gutil.beep();
 };
 
 // HTML task
-gulp.task("html", function() {
+function html() {
     return gulp.src("src/html/*.html")
         // Prevent gulp.watch from crashing
         .pipe(plumber(onError))
@@ -69,19 +71,17 @@ gulp.task("html", function() {
         }))
         // Where to store the finalized HTML
         .pipe(gulp.dest("dist"));
-});
+}
 
 // CSS task
-gulp.task("css", function() {
+function css() {
     return gulp.src("src/scss/main.scss")
         // Prevent gulp.watch from crashing
         .pipe(plumber(onError))
         // Compile Sass
-        .pipe(sass({ style: "compressed", noCache: true }))
+        .pipe(sass({ outputStyle: "compressed" }))
         // parse CSS and add vendor-prefixed CSS properties
-        .pipe(autoprefixer({
-            browsers: ["last 2 versions"]
-        }))
+        .pipe(autoprefixer())
         // Minify CSS
         .pipe(cssmin())
         // Rename the file
@@ -90,10 +90,10 @@ gulp.task("css", function() {
         .pipe(size({ showFiles: true }))
         // Where to store the finalized CSS
         .pipe(gulp.dest("dist/css"));
-});
+}
 
 // JS task
-gulp.task("js", function() {
+function js() {
     return gulp.src("src/js/**/*")
         // Prevent gulp.watch from crashing
         .pipe(plumber(onError))
@@ -101,10 +101,10 @@ gulp.task("js", function() {
         .pipe(concat("production.js"))
         // Where to store the finalized JS
         .pipe(gulp.dest("dist/js"));
-});
+}
 
 // Image task
-gulp.task("images", function() {
+function images() {
     return gulp.src("src/img/**/*.+(png|jpeg|jpg|gif|svg)")
         // Prevent gulp.watch from crashing
         .pipe(plumber(onError))
@@ -112,27 +112,27 @@ gulp.task("images", function() {
         .pipe(imagemin())
         // Where to store the finalized images
         .pipe(gulp.dest("dist/img"));
-});
+}
 
-// Use default task to launch BrowserSync and watch all files
-gulp.task("default", ["build", "browser-sync"], function () {
+// Watch task
+function watchFiles() {
     // All browsers reload after tasks are complete
     // Watch HTML files
-    watch("src/html/**/*", function () {
-        gulp.start("html", reload);
-    });
+    gulp.watch("src/html/**/*", gulp.series(html, reload));
     // Watch Sass files
-    watch("src/scss/**/*", function () {
-        gulp.start('css', reload);
-    });
+    gulp.watch("src/scss/**/*", gulp.series(css, reload));
     // Watch JS files
-    watch("src/js/**/*", function () {
-        gulp.start("js", reload);
-    });
+    gulp.watch("src/js/**/*", gulp.series(js, reload));
     // Watch image files
-    watch("src/img/**/*.+(png|jpeg|jpg|gif|svg)", function () {
-        gulp.start("images", reload);
-    });
-});
+    gulp.watch("src/img/**/*.+(png|jpeg|jpg|gif|svg)", gulp.series(images, reload));
+}
 
-gulp.task("build", ["html", "css", "js", "images"]);
+var build = gulp.parallel(html, css, js, images);
+
+// Use default task to launch BrowserSync and watch all files
+exports.default = gulp.series(build, browserSyncServe, watchFiles);
+exports.build = build;
+exports.html = html;
+exports.css = css;
+exports.js = js;
+exports.images = images;
